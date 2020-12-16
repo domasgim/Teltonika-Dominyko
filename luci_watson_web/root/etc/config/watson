@@ -1,0 +1,4 @@
+config watson 'watson_sct'
+	option 'orgId' 'organisationId'
+	option 'deviceType' 'myDevice'
+	option 'deviceId' 'myDeviceId'
