@@ -14,5 +14,5 @@ Two simple programs that sends and receives SMS messages with AT commands.
 * The program has to be started with root privileges and it checks '/dev/ttyUSB2' port at the moment. If it doesn't work, try changing to another port.
 
 # Credits
-* 'gsm_send' program uses tools from [SMS Server Tools 3](smstools3.kekekasvi.com/). All credit to Stefan Frings (original author of SMS Server Tools), Keijo "Keke" Kasvi (current maintainer) and other contributors.
+* 'gsm_send' program uses tools from [SMS Server Tools 3](http://smstools3.kekekasvi.com/). All credit to Stefan Frings (original author of SMS Server Tools), Keijo "Keke" Kasvi (current maintainer) and other contributors.
 * 'gsm_receive' program uses tools from [hitmoon pdu decoder](https://github.com/hitmoon/sms-pdu).
