@@ -1,11 +1,18 @@
-# IBM Watson IoT Platform packages
+# Send/receive messages with GSM module
+Two simple programs that sends and receives SMS messages with AT commands.
 
-These packages create a sub-menu for Teltonika router to connect to IoT platform.
+# Sending
+* Package 'gsm_send' sends SMS messages. Compile from directory with 'make'.
+* Two parameters have to be passed: the phone number (national conventions without + sign at the moment) and the message.
+* The program has to be started with root privileges and it checks '/dev/ttyUSB2' port at the moment. If it doesn't work, try changing to another port.
+* Multiple word message can be sent by wrapping the second parameter with quotation marks.
+* Works with UNICODE alphabet.
 
-* Package 'libiot-watson-c' installs the nessecary libraries to install to OpenWRT router, based on https://github.com/ibm-watson-iot/iot-embeddedc
-* Package 'luci_watson_web' installs a sub-menu in Teltonika router, used to write configuration data
-* package 'luci_watson_web_prog' installs a C program used to connect to Watson IoT platform and it contains .init file used to turn on/off the program from the sub-menu from above
+# Receiving
+* Package 'gsm_receive' receives SMS messages. Compile from directory with 'make'.
+* The program periodically sends a command to check if there are any unread messages (every 1 second) and prints out a message if its available.
+* The program has to be started with root privileges and it checks '/dev/ttyUSB2' port at the moment. If it doesn't work, try changing to another port.
 
-# Notes
-
-* 'luci_watson_web_prog' package creates a new empty directory /etc/samples in the router and a file /etc/IoTFoundation.pem. The program at execution adds an enviromental variable named IOT_EMBDC_HOME which points to /etc directory. This is used by the installed libraries to get the IoTFoundation.pem file at the specified enviromental variable and searches for 'samples' directory which houses the configuration files.
+# Credits
+* 'gsm_send' program uses tools from [SMS Server Tools 3](smstools3.kekekasvi.com/). All credit to Stefan Frings (original author of SMS Server Tools), Keijo "Keke" Kasvi (current maintainer) and other contributors.
+* 'gsm_receive' program uses tools from [hitmoon pdu decoder](https://github.com/hitmoon/sms-pdu).
