@@ -281,16 +281,16 @@ int main(int argc, char *argv[]) {
         printf("SMS message: %s\n", sms);
         printf("Phone number: +%s\n", phone);
 
-        if (sms[0] == '1') {
+        if (sms[0] == '1' && strlen(sms) == 1) {
             printf("Debug | Option 1\n");
             send_sms(phone, msg1);
-        } else if (sms[0] == '2') {
+        } else if (sms[0] == '2' && strlen(sms) == 1) {
             printf("Debug | Option 2\n");
             send_sms(phone, msg2);
-        } else if (sms[0] == '3') {
+        } else if (sms[0] == '3' && strlen(sms) == 1) {
             printf("Debug | Option 3\n");
             send_sms(phone, msg3);
-        } else if (sms[0] == '4') {
+        } else if (sms[0] == '4' && strlen(sms) == 1) {
             printf("Debug | Option 4\n");
             send_sms(phone, msg4);
         }
