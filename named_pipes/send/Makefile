@@ -4,7 +4,7 @@ CFLAGS=-Wall -D NUMBER_OF_MODEMS=1
 all: encode
 
 encode:	encode.o pdu.o
-	$(CC) $(CFLAGS) encode.o pdu.o -o encode
+	$(CC) $(CFLAGS) encode.o pdu.o -o send
 
 encode.o: encode.c
 	$(CC) $(CFLAGS) -c encode.c
@@ -14,4 +14,4 @@ pdu.o:	pdu.c
 
 clean:
 	rm *.o
-	rm encode
+	rm send

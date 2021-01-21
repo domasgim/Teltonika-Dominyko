@@ -13,20 +13,16 @@
 #include <iconv.h>
 #include <errno.h>
 
-void usage() {
-    printf("Usage: ./a.out phone_number message\n");
-    exit(1);
-}
-
 void send_gsm_msg(unsigned char msg[], int *serial_port) {
     char read_buf [256];
     write(serial_port, msg, strlen(msg));
     int num_bytes = read(serial_port, &read_buf, sizeof(read_buf));
     if (num_bytes < 0) {
-        printf("Error reading: %s", strerror(errno));
+        printf("Error reading: %s", strerror(errno)); 
         return;
     }
-    printf("Read %i bytes. Received message: %s", num_bytes, read_buf);
+    process_signal(read_buf, num_bytes);
+    //printf("Read %i bytes. Received message: %s", num_bytes, read_buf);
     return;
 }
 
@@ -81,7 +77,7 @@ struct termios setup_tty(int serial_port) {
     return tty;
 }
 
-void send_command(char sms[], char number[]) {
+void send_sms(char number[], char sms[]) {
     // Open the serial port. Change device path as needed (currently set to an standard FTDI USB-UART cable type device)
     int serial_port = open("/dev/ttyUSB2", O_RDWR);
     setup_tty(serial_port);
@@ -140,14 +136,12 @@ void send_command(char sms[], char number[]) {
 
     sprintf(TPDU_length, "%d", length);
 
-    printf("\nPDU: %s\n", pdu);
-    printf("PDU Length: %s\n\n", TPDU_length);
+    printf("PDU: %s\n", pdu);
+    printf("PDU Length: %s\n", TPDU_length);
 
-    unsigned char msg01[] = "AT\r";
-    unsigned char msg11[] = "AT+CMGF=0\r";
+    unsigned char msg11[] = "AT+ F=0\r";
     unsigned char msg12[] = "AT+CMGS=";
     unsigned char msg13[1024];
-    //unsigned char msg14[] = "\x1A\r";
 
     unsigned char cmd_end[] = "\r";
     unsigned char msg_end[] = "\x1A\r";
@@ -158,17 +152,15 @@ void send_command(char sms[], char number[]) {
     strncat(msg13, pdu, 512);
     strncat(msg13, msg_end, 5);
 
-
+    /*
     printf("COMMANDS\n");
     printf("%s\n", msg11);
     printf("%s\n", msg12);
     printf("%s\n", msg13);
     printf("\n\n");
+    */
 
-    send_gsm_msg(msg01, serial_port);
-    send_gsm_msg(msg01, serial_port);
-    send_gsm_msg(msg01, serial_port);
-
+    printf("Sending response...\n");
     send_gsm_msg(msg11, serial_port);
     send_gsm_msg(msg12, serial_port);
     //send_gsm_msg(msg13, serial_port);
@@ -182,20 +174,65 @@ void send_command(char sms[], char number[]) {
         printf("Error reading: %s", strerror(errno));
         return;
     }
-    printf("Read %i bytes. Received message: %s", num_bytes, read_buf);
+    //printf("Read %i bytes. Received message: %s", num_bytes, read_buf);
 
     send_gsm_msg(msg_end, serial_port);
 
     close(serial_port);
-    return; // success
+    return 0; // success
+}
+
+int process_signal(char msg[], int size) {
+    int contains_signal = 0;
+    char signal_strength[4];
+    int signal_value;
+
+    for (int i = 0; i < size; i++) {
+        if (msg[i] == '+' && msg[i + 1] == 'C' && msg[i + 2] == 'S' && 
+            msg[i + 3] == 'Q' && msg[i + 4] == ':') {
+
+            //printf("!!!!");
+            //contains_signal++;
+
+            strncat(signal_strength, &msg[i + 6], 1);
+            strncat(signal_strength, &msg[i + 7], 1);
+
+            signal_value = atoi(signal_strength);
+
+            printf("Signal strength: %d\n\n", signal_value);
+
+            if (signal_value < 3) {
+                printf("Error: no signal\n");
+                exit(1);
+
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+    }
+
+    return 0;
+}
+
+void check_signal() {
+    int serial_port = open("/dev/ttyUSB2", O_RDWR);
+    setup_tty(serial_port);
+    unsigned char msg1[] = "AT+CSQ\r";
+
+    printf("Checking signal strength...\n");
+    send_gsm_msg(msg1, serial_port);
 }
 
 int main(int argc, char *argv[]) {
-    int fd1; 
-  
+    check_signal();
+    printf("Program ready, waiting for messages...\n");
+
+    int fd1;
+
     // FIFO file path 
     char * fifo_receive = "/tmp/fifo_receive"; 
-  
+
     // Creating the named file(FIFO) 
     // mkfifo(<pathname>,<permission>) 
     mkfifo(fifo_receive, 0666);
@@ -213,7 +250,8 @@ int main(int argc, char *argv[]) {
         read(fd1, str1, 512); 
   
         // Print the read string and close 
-        printf("SMS received: %s\n", str1); 
+        printf("========================================================================\n");
+        //printf("SMS received: %s\n", str1); 
 
         close(fd1); 
 
@@ -225,7 +263,8 @@ int main(int argc, char *argv[]) {
         int flag = 0;
 
         for (int i = 0; i < strlen(str1); i++) {
-            if (str1[i] == ';') {
+            //if (str1[i] == ';') {
+            if (str1[i] == '\x11') {
                 flag++;
             }
 
@@ -233,28 +272,29 @@ int main(int argc, char *argv[]) {
                 strncat(sms, &str1[i], 1);
             }
 
-            if (flag == 1 && str1[i] != ';' && str1[i] != '+') {
+            if (flag == 1 && str1[i] != '\x11' && str1[i] != '+') {
                 strncat(phone, &str1[i], 1);
             }
 
         }
 
-        printf("Debug | SMS message: %s\n", sms);
-        printf("Debug | Phone number: %s\n\n", phone);
+        printf("SMS message: %s\n", sms);
+        printf("Phone number: +%s\n", phone);
 
         if (sms[0] == '1') {
             printf("Debug | Option 1\n");
-            send_command(msg1, phone);
+            send_sms(phone, msg1);
         } else if (sms[0] == '2') {
             printf("Debug | Option 2\n");
-            send_command(msg2, phone);
+            send_sms(phone, msg2);
         } else if (sms[0] == '3') {
             printf("Debug | Option 3\n");
-            send_command(msg3, phone);
+            send_sms(phone, msg3);
         } else if (sms[0] == '4') {
             printf("Debug | Option 4\n");
-            send_command(msg4, phone);
+            send_sms(phone, msg4);
         }
+        printf("========================================================================\n\n\n");
     } 
-    return 0;
+    return 0; // success
 }

@@ -66,7 +66,7 @@ void send_fifo(char msg[]) {
 
     write(fd1, msg, strlen(msg)); 
 
-    printf("Message sent\n"); 
+    printf("Message sent\n\n"); 
 
     close(fd1); 
 }
@@ -108,32 +108,70 @@ void process_pdu(char msg[], int size) {
             memmove(pdu, pdu + 1, strlen(pdu));
         }
 
+        printf("\n========================================================================\n");
         printf("PDU = %s\n", pdu);
 
         struct SMS_Struct s = PDUDecoding(pdu);
 
         memset(fifo_msg, 0, sizeof fifo_msg);
         strncat(fifo_msg, s.UD, strlen(s.UD));
-        strncat(fifo_msg, ";", 1);
+        //strncat(fifo_msg, ";", 1);
+        strncat(fifo_msg, "\x11", 1);
         strncat(fifo_msg, s.OA, strlen(s.OA));
-        strncat(fifo_msg, ";", 1);
+        //strncat(fifo_msg, ";", 1);
+        strncat(fifo_msg, "\x11", 1);
 
-        printf("Debug: sending message %s\n", fifo_msg);
+        //printf("Debug: sending message - %s\n", fifo_msg);
         send_fifo(fifo_msg);
 
         printf("SMSC: %s\n", s.SCA);
         printf("Sender number: %s\n", s.OA);
         printf("Timestamp: %s\n", s.SCTS);
         printf("Message: %s\n", s.UD);
-        //printf("Encoding： %s\n", DSC_to_msg(s.DCS));
-        printf("\n");
+        printf("Encoding： %s\n", DSC_to_msg(s.DCS));
+        printf("========================================================================\n\n\n");
     }
     //printf("FUNKCIJOS PABAIGA \n\n");
 
 }
 
+int process_signal(char msg[], int size) {
+    int contains_signal = 0;
+    char signal_strength[4];
+    int signal_value;
+
+    for (int i = 0; i < size; i++) {
+        if (msg[i] == '+' && msg[i + 1] == 'C' && msg[i + 2] == 'S' && 
+            msg[i + 3] == 'Q' && msg[i + 4] == ':') {
+
+            //printf("!!!!");
+            //contains_signal++;
+
+            strncat(signal_strength, &msg[i + 6], 1);
+            strncat(signal_strength, &msg[i + 7], 1);
+
+            signal_value = atoi(signal_strength);
+
+            printf("Signal strength: %d\n\n", signal_value);
+
+            if (signal_value < 3) {
+                printf("Error: no signal\n");
+                exit(1);
+
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+    }
+
+    return 0;
+}
+
 void send_gsm_msg(unsigned char msg[], int *serial_port) {
     char read_buf [65536];
+    int signal_flag;
+
     write(serial_port, msg, strlen(msg));
     int num_bytes = read(serial_port, &read_buf, sizeof(read_buf));
     if (num_bytes < 0) {
@@ -141,28 +179,76 @@ void send_gsm_msg(unsigned char msg[], int *serial_port) {
         return;
     }
     //printf("Read %i bytes. Received message: \n%s\n", num_bytes, read_buf);
+    process_signal(read_buf, num_bytes);
     process_pdu(read_buf, num_bytes);
+
     //get_pdu(read_buf, num_bytes);
     return;
 }
 
-int main() {
-
+void prepare_program() {
     int serial_port = open("/dev/ttyUSB2", O_RDWR);
     setup_tty(serial_port);
 
+    unsigned char msg0[] = "AT+CSQ\r";
+    unsigned char msg1[] = "AT+CNMI=2,1,0,0,0\r";
+    unsigned char msg2[] = "AT+CMGF=0\r";
+    unsigned char msg4[] = "AT+CMGD=1,4\r";
+
+    printf("Checking signal strength...\n");
+    send_gsm_msg(msg0, serial_port);
+
+    printf("Initialising...\n");
+    send_gsm_msg(msg1, serial_port);
+    send_gsm_msg(msg2, serial_port);
+    send_gsm_msg(msg4, serial_port);
+
+    printf("Receiver ready, waiting for messages...\n");
+
+    close(serial_port);
+}
+
+void check_message() {
+    int serial_port = open("/dev/ttyUSB2", O_RDWR);
+    setup_tty(serial_port);
+
+    unsigned char msg3[] = "AT+CMGL=0\r";
+
+    send_gsm_msg(msg3, serial_port);
+
+    close(serial_port);
+}
+
+int main() {
+
+    prepare_program();
+
+    while (true) {
+        check_message();
+        sleep(5);
+    }
+    /*
+    int serial_port = open("/dev/ttyUSB2", O_RDWR);
+    setup_tty(serial_port);
+
+    unsigned char msg0[] = "AT+CSQ\r";
     unsigned char msg1[] = "AT+CNMI=2,1,0,0,0\r";
     unsigned char msg2[] = "AT+CMGF=0\r";
     unsigned char msg3[] = "AT+CMGL=0\r";
 
-    printf("Starting program...\n");
+    printf("Checking signal strength...\n");
+    send_gsm_msg(msg0, serial_port);
+
+    printf("Initialising...\n");
     send_gsm_msg(msg1, serial_port);
     send_gsm_msg(msg2, serial_port);
 
+    printf("Receiver ready, waiting for messages...\n");
     while (true) {
         send_gsm_msg(msg3, serial_port);
         sleep(1);
     }
+    */
 
     return 0;
 }
