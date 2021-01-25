@@ -1,0 +1,9 @@
+<node>
+	<interface name="com.smsprocess.GDBUS">
+		<method name="send_sms_information">
+			<arg name="phone_number" direction="in" type="s"/>
+            <arg name="SMS_message" direction="in" type="s"/>
+			<arg name="response" direction="out" type="s"/>
+		</method>
+	</interface>
+</node>
