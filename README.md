@@ -6,7 +6,7 @@ Two simple programs that sends and receives SMS messages with AT commands.
 * Launching both programs on separate terminals and sending a SMS message to the modem will show communication between two processes.
 * Sending an SMS message containing numbers from 1 to 4 will be responded with different messages.
 
-# Sending
+# GDBUS
 * Package 'gdbus' contains two programs simmilar to ones in 'named pipes' which do the same actions using gdbus wrapper.
 * Compile first with 'make gen' and then 'make'
 * 'sms_receive' listens to the modem and processes SMS message in PDU format and sends it's contents to dbus.
