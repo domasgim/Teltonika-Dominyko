@@ -7,7 +7,7 @@ FLAGS=$(shell pkg-config --libs --cflags gio-2.0 gio-unix-2.0 glib-2.0)
 
 all: sms_send sms_receive
 
-sms_send: sms_send.o smsprocess.o
+sms_send: sms_send.o smsprocess.o pdu.o
 	gcc -o $@ $^ $(FLAGS)
 
 sms_receive: sms_receive.o smsprocess.o SMS.o utf.o
@@ -27,6 +27,9 @@ SMS.o: SMS.c
 
 utf.o: utf.c
 	$(CC) $(CFLAGS) -c utf.c
+
+pdu.o:	pdu.c
+	$(CC) $(CFLAGS) -c pdu.c
 
 clean:
 	rm -f *.o sms_send sms_receive

@@ -2,9 +2,15 @@
 Two simple programs that sends and receives SMS messages with AT commands.
 
 # Named pipes
-* Package 'named_pipes' contains two directories with simmilar programs above. Compiling is the same.
+* Package 'named_pipes' contains two directories with simmilar programs above. Compile with 'make'.
 * Launching both programs on separate terminals and sending a SMS message to the modem will show communication between two processes.
 * Sending an SMS message containing numbers from 1 to 4 will be responded with different messages.
+
+# Sending
+* Package 'gdbus' contains two programs simmilar to ones in 'named pipes' which do the same actions using gdbus wrapper.
+* Compile first with 'make gen' and then 'make'
+* 'sms_receive' listens to the modem and processes SMS message in PDU format and sends it's contents to dbus.
+* 'sms_send' listens to dbus signals and processes the received calls.
 
 # Sending
 * Package 'gsm_send' sends SMS messages. Compile from directory with 'make'.
