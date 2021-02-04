@@ -243,10 +243,10 @@ void read_monitor_data(const char * const monitor) {
     phone_number = cJSON_GetObjectItemCaseSensitive(monitor_json, "phone_number");
     message = cJSON_GetObjectItemCaseSensitive(monitor_json, "message");
 
-    printf("========================================================================\n");
+    //printf("========================================================================\n");
     printf("Phone number: %s\n", phone_number->valuestring);
     printf("Message contents: %s\n", message->valuestring);
-    printf("========================================================================\n\n\n");
+    //printf("========================================================================\n\n\n");
 
     
     end:
@@ -271,7 +271,10 @@ int main(int argc, char *argv[]) {
     { 
         char *address = s_recv(subscriber);
         char *contents = s_recv(subscriber);
+        printf("========================================================================\n");
+        printf("Contents: %s\n", contents);
         read_monitor_data(contents);
+        printf("========================================================================\n\n\n");
 
         free(address);
         free(contents);

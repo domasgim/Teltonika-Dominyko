@@ -33,24 +33,24 @@ enum EnumCSMIEI {
 };
 
 struct PDUUDH {
-    unsigned int count;    // 信息元素数据字节数
-    char IEI;           // 信息元素标识
-    char *IED;          // 信息元素数据
+    unsigned int count;    // Information element data bytes 
+    char IEI;           // Information element identification 
+    char *IED;          // Information element data 
 };
 
-// 用户数据头
+// User data header 
 struct UDHS {
     int count;
     struct PDUUDH *UDH;
 };
 
-// 用户数据数组，用于拆分短信
+// User data array, used to split SMS
 struct UDS {
     unsigned int total;
     char **Data;
 };
 
-// 编码后短信
+// SMS after encoding 
 struct PDUS {
     unsigned int count;
     char **PDU;
@@ -62,31 +62,31 @@ struct ByteArray {
 };
 
 struct SMS_Struct {
-    char *SCA;         // 服务中心地址
-    char *OA;          // 发送方地址
-    char *SCTS;        // 服务中心时间戳
-    struct UDHS *UDH;     // 用户数据头
-    char *UD;          // 用户数据
+    char *SCA;         // Service center address
+    char *OA;          // Sender number
+    char *SCTS;        // Timestamp
+    struct UDHS *UDH;     // UDH
+    char *UD;          // Message contents
 
-    bool RP;              // 应答路径
-    bool UDHI;            // 用户数据头标识
-    bool SRI;             // 状态报告指示
-    bool MMS;             // 更多信息发送
-    int MTI;              // 信息类型指示
+    bool RP;              // Response path
+    bool UDHI;            // UDHI
+    bool SRI;             // Status report indication
+    bool MMS;             // Send more info
+    int MTI;              // Information type indication
 
-    char PID;          // PID 协议标识
+    char PID;          // PID
 
-    enum EnumDCS DCS;      // 数据编码方案
-    bool TC;              // 文本压缩指示 0： 未压缩 1：压缩
-    int MC;               // 消息类型 -1： 无 1：移动设备特定类型 2：SIM特定类型 3：终端设备特定类型
+    enum EnumDCS DCS;      // Data coding scheme
+    bool TC;              // Text compression indication 0：uncompressed 1：compressed
+    int MC;               // Message type -1: None 1: Mobile device specific type 2: SIM specific type 3: Terminal device specific type 
 
 };
 
 
-// 短信解码
+// SMS decoding 
 struct SMS_Struct PDUDecoding(const char *data);
 
-// 短信编码, 自动确定编码方案
+// SMS encoding, automatically determine the encoding scheme 
 struct PDUS *PDUEncoding(char *DA, char *UDC, struct UDHS *udhs);
 
 // 短信编码真正的工作
@@ -134,7 +134,7 @@ int isBIT7Same(u_int16_t UCS2);
 // 判断是否是GSM字符串
 int isGSMString(char *Data);
 
-// 用户数据拆分
+// User data split 
 struct UDS *UDCSplit(char *UDC, struct UDHS *uhds, enum EnumDCS DCS);
 
 // 获得用户数据头长度

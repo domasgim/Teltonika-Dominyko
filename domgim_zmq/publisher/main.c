@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "SMS.h"
 #include <locale.h>
-#include "utf.h"
 #include <termios.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -11,10 +9,16 @@
 #include <sys/stat.h> 
 #include <sys/types.h> 
 
-#include "cJSON.h"
-#include "zhelpers.h"
+#include "src/SMS.h"
+#include "src/utf.h"
+#include "src/cJSON.h"
+#include "src/zhelpers.h"
 
 #define DSC_to_msg(DSC) (DSC == 0 ? "Bit7" : (DSC == 1 ? "Bit8" : "UCS2"))
+
+struct SMS_Struct sms_list[32];
+int sms_list_size = 0;
+int sms_list_flag = 0;
 
 struct termios setup_tty(int serial_port) {
     struct termios tty;
@@ -88,53 +92,98 @@ end:
     return string;
 }
 
-void process_pdu(char msg[], int size, void *socket) {
+void process_all_pdus(void *socket) {
+    char message[2048];
+    memset(message, 0, sizeof message);
+
+    for(int i = 0; i < sms_list_size; i++) {
+
+        if (sms_list[i].UDHI == true && sms_list[i].MMS == true) {
+            printf("DEBUG: [%d] message: %s length: %d\n", i, sms_list[i].UD, strlen(sms_list[i].UD));
+            //strncat(message, &sms_list[i].UD, strlen(sms_list[i].UD - 1));
+            strcat(message, sms_list[i].UD);
+            //printf("Concated message: %s\n\n", message);
+
+        } else if (sms_list[i].UDHI == true && sms_list[i].MMS == false) {
+            printf("DEBUG: [%d] message: %s length: %d\n", i, sms_list[i].UD, strlen(sms_list[i].UD));
+            //strncat(message, &sms_list[i].UD, strlen(sms_list[i].UD));
+            strcat(message, sms_list[i].UD);
+            //printf("Concated message: %s\n", message);
+
+            printf("========================================================================\n");
+            printf("SMSC: %s\n", sms_list[i].SCA);
+            printf("Sender number: %s\n", sms_list[i].OA);
+            printf("Timestamp: %s\n", sms_list[i].SCTS);
+            printf("Message: %s\n", message);
+            printf("Encoding： %s\n", DSC_to_msg(sms_list[i].DCS));
+
+            char *json_string = create_monitor_with_helpers(sms_list[i].OA, message);
+            s_sendmore(socket, "SMS");
+            s_send(socket, json_string);
+
+            printf("JSON string sent...\n");
+            printf("JSON: %s\n", json_string);
+            printf("========================================================================\n\n\n");
+
+            memset(message, 0, sizeof message);
+            sleep(1);
+        } else {
+
+            printf("========================================================================\n");
+            printf("SMSC: %s\n", sms_list[i].SCA);
+            printf("Sender number: %s\n", sms_list[i].OA);
+            printf("Timestamp: %s\n", sms_list[i].SCTS);
+            printf("Message: %s\n", sms_list[i].UD);
+            printf("Encoding： %s\n", DSC_to_msg(sms_list[i].DCS));
+
+            char *json_string = create_monitor_with_helpers(sms_list[i].OA, sms_list[i].UD);
+            s_sendmore(socket, "SMS");
+            s_send(socket, json_string);
+
+            printf("JSON string sent...\n");
+            printf("========================================================================\n\n\n");  
+            sleep(1); 
+        }
+    }
+}
+
+void process_CMGL(char msg[], int size, void *socket) {
+    int contains_header = 0;
     int contains_pdu = 0;
-    int pdu_msg = 0;
+    struct SMS_Struct sms;
+
     char pdu[2048];
-    char fifo_msg[1024];
 
     memset(pdu, 0, sizeof pdu);
 
     for (int i = 0; i < size; i++) {
         if (msg[i] == 'C' && msg[i + 1] == 'M' && msg[i + 2] == 'G' && 
             msg[i + 3] == 'L' && msg[i + 4] == ':') {
-                contains_pdu++;
+                contains_header = 1;
                 }
         
-        if (contains_pdu == 1 && msg[i] == '\n' || contains_pdu == 2 && msg[i] == '\n') {
-            contains_pdu++;
+        if (contains_header == 1 && msg[i] == '\n') {
+            contains_header = 0;
+            contains_pdu = 1;
+            i++;
         }
 
-        if (contains_pdu == 2) {
+        if (contains_pdu == 1) {
             strncat(pdu, &msg[i], 1);
         }
-    }
-    if (contains_pdu > 0) {
-        if (pdu[0] == '\n') {
-            memmove(pdu, pdu + 1, strlen(pdu));
+
+        if (contains_pdu == 1 && msg[i] == '\n') {
+            contains_pdu = 0;
+            sms = PDUDecoding(pdu);
+
+            sms_list[sms_list_size] = sms;
+            sms_list_size++;
+            sms_list_flag++;
+
+            memset(pdu, 0, sizeof pdu);
+            i++;
         }
-
-        struct SMS_Struct s = PDUDecoding(pdu);
-        char *json_string = create_monitor_with_helpers(s.OA, s.UD);
-
-        printf("\n========================================================================\n");
-        printf("PDU = %s\n", pdu);
-        printf("SMSC: %s\n", s.SCA);
-        printf("Sender number: %s\n", s.OA);
-        printf("Timestamp: %s\n", s.SCTS);
-        printf("Message: %s\n", s.UD);
-        printf("Encoding： %s\n", DSC_to_msg(s.DCS));
-
-        // ISSIUSTI ZINUTE ZMQ
-        s_sendmore(socket, "SMS");
-        s_send(socket, json_string);
-
-        printf("%s\n", json_string);
-        printf("========================================================================\n\n\n");
     }
-    //printf("FUNKCIJOS PABAIGA \n\n");
-
 }
 
 int process_signal(char msg[], int size) {
@@ -182,7 +231,7 @@ void send_gsm_msg(unsigned char msg[], int *serial_port, void *socket) {
     }
     //printf("Read %i bytes. Received message: \n%s\n", num_bytes, read_buf);
     process_signal(read_buf, num_bytes);
-    process_pdu(read_buf, num_bytes, socket);
+    process_CMGL(read_buf, num_bytes, socket);
 
     //get_pdu(read_buf, num_bytes);
     return;
@@ -224,30 +273,14 @@ int main() {
         setup_tty(serial_port);
         send_gsm_msg(msg3, serial_port, publisher);
         close(serial_port);
+
+        if (sms_list[sms_list_size - 1].MMS == false) {
+            process_all_pdus(publisher);
+            sms_list_size = 0;
+            memset(sms_list, 0, sizeof(sms_list));
+        }
         sleep(5);
     }
-    /*
-    int serial_port = open("/dev/ttyUSB2", O_RDWR);
-    setup_tty(serial_port);
-
-    unsigned char msg0[] = "AT+CSQ\r";
-    unsigned char msg1[] = "AT+CNMI=2,1,0,0,0\r";
-    unsigned char msg2[] = "AT+CMGF=0\r";
-    unsigned char msg3[] = "AT+CMGL=0\r";
-
-    printf("Checking signal strength...\n");
-    send_gsm_msg(msg0, serial_port);
-
-    printf("Initialising...\n");
-    send_gsm_msg(msg1, serial_port);
-    send_gsm_msg(msg2, serial_port);
-
-    printf("Receiver ready, waiting for messages...\n");
-    while (true) {
-        send_gsm_msg(msg3, serial_port);
-        sleep(1);
-    }
-    */
 
     return 0;
 }
